@@ -235,7 +235,34 @@ If you're unsure, add both candidate indices as separate entries and test which 
 
 **Port indices shift:** CoreMIDI re-enumerates endpoints whenever a device connects or disconnects. If you add or remove a virtual MIDI port (e.g. start/stop a virtual instrument or MIDI routing app), all indices may shift. Re-run `list_midi_ports.py` and `patch_midi_lookup.py` if ports disappear from SoundDiver.
 
-**CrossOver updates:** The patch is applied to `winecoreaudio.so` inside the CrossOver app bundle. A CrossOver update will overwrite this file. Keep the backup (`.bak`) and re-run `patch_midi_lookup.py` after updating.
+**CrossOver updates:** The patch is applied to `winecoreaudio.so` inside the CrossOver app bundle. A CrossOver update will silently overwrite this file — including the `.bak` backup stored next to it — restoring the original behaviour. See [After a CrossOver update](#after-a-crossover-update) below.
+
+---
+
+## After a CrossOver update
+
+**Symptom:** SoundDiver freezes on the splash screen again after CrossOver auto-updated.
+
+**Cause:** CrossOver updates replace the entire app bundle, overwriting `winecoreaudio.so` and any `.bak` backup stored alongside it. The fix must be reapplied from scratch.
+
+**Fix:** re-run the patcher — it detects original vs. already-patched bytes automatically, so no backup is needed:
+
+```bash
+python3 patch_midi_lookup.py
+```
+
+Then restart SoundDiver.
+
+To avoid being caught off guard, check whether the patch is still active with:
+
+```python
+python3 - <<'EOF'
+import struct
+SO = "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/lib/wine/x86_64-unix/winecoreaudio.so"
+b = open(SO,'rb').read()
+print("PATCHED" if b[0x54ca] == 0xb8 else "ORIGINAL — run patch_midi_lookup.py")
+EOF
+```
 
 ---
 
@@ -245,6 +272,8 @@ If you're unsure, add both candidate indices as separate entries and test which 
 SO="/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/lib/wine/x86_64-unix/winecoreaudio.so"
 cp "${SO}.bak" "$SO"
 ```
+
+Note: the `.bak` backup lives inside the CrossOver bundle and is erased by CrossOver updates. If the backup is gone, simply reinstall CrossOver (or let it update) to get a clean `winecoreaudio.so` and re-run `patch_midi_lookup.py`.
 
 ---
 
